@@ -14,14 +14,6 @@ import numpy as np
 
 # ================================================= Flexible Layer ================================================================================
 
-class Reshape(nn.Module):
-    def __init__(self, *args):
-        super(Reshape, self).__init__()
-        self.shape = args
-
-    def forward(self, x):
-        return x.view(self.shape)
-
 class FlexiLayer(nn.Conv2d):
     def __init__(self, in_channels, out_channels, kernel_size, stride=1,
                  padding=0, dilation=1, groups=1,
@@ -35,19 +27,19 @@ class FlexiLayer(nn.Conv2d):
             groups, bias, padding_mode)
         
         
-        self.threshold1 = nn.parameter.Parameter(torch.randn((100, 64, 30, 30)), requires_grad=True)
+        self.threshold1 = nn.parameter.Parameter(torch.randn((1, self.out_channels, 30, 30)), requires_grad=True)
             
     def forward(self, t):
         
+        self.threshold1.expand(t.size(0), self.out_channels, 30, 30)
+        
         t_1 = F.relu(F.conv2d(t, self.weight)) # get convolution result
         t_2 = F.max_pool2d(t, kernel_size=self.kernel_size, stride=1) # get max result with the same kernel size
-        #t_2 = torch.cat((t_2, t_2, t_2), 1)
         m = nn.Sigmoid()
         cond = torch.sub(t_2, self.threshold1)
         t_2 = m(cond*50)*t_2 # 
         t_1 = m(cond*(-50))*t_1 # 
         t = torch.add(t_2, t_1)
-        #t = F.max_pool2d(t, kernel_size=2, stride=2)
         
         return t
     
